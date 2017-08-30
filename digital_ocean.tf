@@ -33,23 +33,32 @@ resource "null_resource" "autojoin-consul-master" {
         do_node = "${digitalocean_floating_ip.master.ip_address}"
     }
 
-    provisioner "remote-exec" {
-        connection {
-            agent = true
-            host =  "${digitalocean_floating_ip.master.ip_address}"
-        }
+    connection {
+        agent = true
+        host =  "${digitalocean_floating_ip.master.ip_address}"
+    }
 
+    provisioner "file" {
+        source      = "start_master.bash"
+        destination = "/tmp/start_master.bash"
+    }
+
+    provisioner "remote-exec" {
+    
         inline = [
-            "apt-get update",
-            "apt-get install -yq zip",
-            "curl https://releases.hashicorp.com/nomad/0.6.0/nomad_0.6.0_linux_386.zip >> nomad.zip",
-            "curl https://releases.hashicorp.com/consul/0.9.2/consul_0.9.2_linux_386.zip >> consul.zip",
-            "unzip nomad.zip",
-            "unzip consul.zip",
-            "rm nomad.zip",
-            "rm consul.zip",
+            "chmod +x /tmp/start_master.bash",
+            "MASTER_IP=${digitalocean_droplet.master.ipv4_address} /tmp/start_master.bash"
+
+            # "apt-get update",
+            # "apt-get install -yq zip",
+            # "curl https://releases.hashicorp.com/nomad/0.6.0/nomad_0.6.0_linux_386.zip >> nomad.zip",
+            # "curl https://releases.hashicorp.com/consul/0.9.2/consul_0.9.2_linux_386.zip >> consul.zip",
+            # "unzip nomad.zip",
+            # "unzip consul.zip",
+            # "rm nomad.zip",
+            # "rm consul.zip",
             # "consul join ${digitalocean_floating_ip.minion.ip_address}"
-            "docker run -d consul agent -dev -join=${digitalocean_floating_ip.minion.ip_address}"
+            # "docker run -d consul agent -dev -join=${digitalocean_floating_ip.minion.ip_address}"
         ]
     }
 }
@@ -58,29 +67,38 @@ resource "null_resource" "autojoin-consul-master" {
 # their floating IP addresses have been assigned
 resource "null_resource" "autojoin-consul-minion" {
 
-    depends_on = ["digitalocean_floating_ip.master", "digitalocean_floating_ip.minion"]
+    depends_on = ["null_resource.autojoin-consul-master"]
 
     triggers {
         do_node = "${digitalocean_floating_ip.minion.ip_address}"
     }
 
+    connection {
+        agent = true
+        host =  "${digitalocean_floating_ip.minion.ip_address}"
+    }
+
+    provisioner "file" {
+        source      = "start_minion.bash"
+        destination = "/tmp/start_minion.bash"
+    }
     provisioner "remote-exec" {
-        connection {
-            agent = true
-            host =  "${digitalocean_floating_ip.master.ip_address}"
-        }
 
         inline = [
-            "apt-get update",
-            "apt-get install -yq zip",
-            "curl https://releases.hashicorp.com/nomad/0.6.0/nomad_0.6.0_linux_386.zip >> nomad.zip",
-            "curl https://releases.hashicorp.com/consul/0.9.2/consul_0.9.2_linux_386.zip >> consul.zip",
-            "unzip nomad.zip",
-            "unzip consul.zip",
-            "rm nomad.zip",
-            "rm consul.zip",
+            "chmod +x /tmp/start_minion.bash",
+            "MASTER_IP=${digitalocean_droplet.master.ipv4_address} /tmp/start_minion.bash",
+            "echo ${digitalocean_droplet.minion.ipv4_address}"
+
+            # "apt-get update",
+            # "apt-get install -yq zip",
+            # "curl https://releases.hashicorp.com/nomad/0.6.0/nomad_0.6.0_linux_386.zip >> nomad.zip",
+            # "curl https://releases.hashicorp.com/consul/0.9.2/consul_0.9.2_linux_386.zip >> consul.zip",
+            # "unzip nomad.zip",
+            # "unzip consul.zip",
+            # "rm nomad.zip",
+            # "rm consul.zip",
             # "consul join ${digitalocean_floating_ip.master.ip_address}"
-            "docker run -d consul agent -dev -join=${digitalocean_floating_ip.master.ip_address}"
+            # "docker run -d consul agent -dev -join=${digitalocean_floating_ip.master.ip_address}"
         ]
     }
 }
@@ -100,7 +118,7 @@ resource "digitalocean_droplet" "minion" {
     image              = "docker-16-04"
     size               = "512mb"
     region             = "nyc3"
-    name               = "master"
+    name               = "minion"
     ssh_keys           = ["${digitalocean_ssh_key.default.fingerprint}"]
     ipv6               = true
     private_networking = true
