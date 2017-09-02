@@ -1,0 +1,9 @@
+[Unit]
+Description = "Consul"
+
+[Service]
+# Stop consul will not mark node as failed but left
+KillSignal=INT
+ExecStart=/usr/local/bin/consul agent -data-dir=${data_dir} -bind=${master_ip} -bootstrap-expect=2 -server
+Restart=always
+ExecStopPost=sleep 5

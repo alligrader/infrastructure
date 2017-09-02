@@ -1,0 +1,9 @@
+[Unit]
+Description = "Consul Minion"
+
+[Service]
+# Stop consul will not mark node as failed but left
+KillSignal=INT
+ExecStart=/usr/local/bin/consul agent -data-dir=${data_dir} -retry-join=${master_ip} -bind=${minion_ip} -server
+Restart=always
+ExecStopPost=sleep 5
